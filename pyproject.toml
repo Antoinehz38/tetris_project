@@ -16,7 +16,8 @@ dependencies = [
     "tensorboard",
     "gymnasium",
     "opencv-python",
-    "tetris-gymnasium"
+    "tetris-gymnasium",
+    "stable-baselines3",
 ]
 
 [build-system]
