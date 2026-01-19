@@ -1,0 +1,30 @@
+[project]
+name = "tetris_project"
+version = "0.1.0"
+description = "RL Tetris project for course in CS ICE mention"
+readme = "README.md"
+authors = [
+    { name = "Antoine Hanachowicz", email = "antoine.hanachowicz@outlook.com" },
+]
+requires-python = ">=3.12"
+
+dependencies = [
+    "numpy",
+    "pygame",
+    "torch",
+    "matplotlib",
+    "tensorboard",
+    "gymnasium",
+    "opencv-python",
+    "tetris-gymnasium"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
