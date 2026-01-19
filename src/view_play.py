@@ -2,7 +2,7 @@ import cv2
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
 from tetris_gymnasium.envs.tetris import Tetris
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, PPO
 
 if __name__ == "__main__":
     env = gym.make(
@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     observation, info = env.reset()
 
-    model = DQN.load("runs/tetris/dqn_tetris_final.zip")
+    model = PPO.load("runs/tetris/ppo_tetris_final.zip")
 
     terminated = False
     total_reward = 0
