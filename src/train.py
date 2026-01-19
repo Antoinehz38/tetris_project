@@ -1,9 +1,9 @@
 import argparse
-import os, torch
-
+import os
+import torch
+import numpy as np
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation, RecordEpisodeStatistics
-
 from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -13,8 +13,6 @@ from src.helper.wrapper import RewardWrapper
 from src.helper.reward_functions import added_reward, standard_reward
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-def make_env():
-    env = gym.make("tetris_gymnasium/Tetris")
 
 def make_env(mode="standard"):
     env = gym.make("tetris_gymnasium/Tetris")
@@ -32,7 +30,6 @@ def make_env(mode="standard"):
     env = Monitor(env)
     return env
 
-
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--algo", type=str, default="ppo", choices=["dqn", "double_dqn", "ppo"])
@@ -40,6 +37,10 @@ def main():
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--logdir", type=str, default="runs/tetris")
     p.add_argument("--save_every", type=int, default=50_000)
+    
+    # Nouvel argument pour choisir le type de récompense
+    p.add_argument("--reward", type=str, default="standard", choices=["standard", "holes", "height"], 
+                   help="Choose the reward function: 'standard' (game score), 'holes' (minimize holes), or 'height' (minimize stack height).")
 
     
     # Nouvel argument pour choisir le type de récompense
@@ -56,7 +57,6 @@ def main():
     p.add_argument("--gamma", type=float, default=0.99)
     p.add_argument("--lr", type=float, default=1e-3)
 
-
     args = p.parse_args()
 
     os.makedirs(args.logdir, exist_ok=True)
@@ -67,7 +67,7 @@ def main():
     checkpoint_cb = CheckpointCallback(
         save_freq=args.save_every,
         save_path=args.logdir,
-        name_prefix=f"{args.algo}_tetris",
+        name_prefix=f"{args.algo}_tetris_{args.reward}", # Ajout du mode dans le nom du fichier
         save_replay_buffer=True,
         save_vecnormalize=True,
     )
@@ -106,11 +106,10 @@ def main():
         )
 
     model.learn(total_timesteps=args.steps, callback=checkpoint_cb)
-    model.save(os.path.join(args.logdir, f"{args.algo}_tetris_final"))
+    
+    # Sauvegarde finale avec le nom du reward
+    model.save(os.path.join(args.logdir, f"{args.algo}_tetris_{args.reward}_final"))
     env.close()
-
 
 if __name__ == "__main__":
     main()
-
-
