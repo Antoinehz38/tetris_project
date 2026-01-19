@@ -7,12 +7,26 @@ from gymnasium.wrappers import FlattenObservation, RecordEpisodeStatistics
 from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback
+from tetris_gymnasium.envs.tetris import Tetris
 
-from tetris_gymnasium.envs.tetris import Tetris  
+from src.helper.wrapper import RewardWrapper
+from src.helper.reward_functions import added_reward, standard_reward
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def make_env():
     env = gym.make("tetris_gymnasium/Tetris")
+
+def make_env(mode="standard"):
+    env = gym.make("tetris_gymnasium/Tetris")
+    
+    if mode == "standard":
+        reward_fn = standard_reward
+    elif mode == "added":
+        reward_fn = added_reward
+    else:
+        raise ValueError(f"Unknown reward mode: {mode}")
+        
+    env = RewardWrapper(env, reward_fn)
     env = RecordEpisodeStatistics(env)
     env = FlattenObservation(env)
     env = Monitor(env)
@@ -26,6 +40,11 @@ def main():
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--logdir", type=str, default="runs/tetris")
     p.add_argument("--save_every", type=int, default=50_000)
+
+    
+    # Nouvel argument pour choisir le type de récompense
+    p.add_argument("--reward", type=str, default="added", choices=["standard", "added"], 
+                   help="Choose the reward function: 'standard' (game score), 'holes' (minimize holes), or 'height' (minimize stack height).")
 
     p.add_argument("--buffer_size", type=int, default=100_000)
     p.add_argument("--learning_starts", type=int, default=10_000)
@@ -41,7 +60,9 @@ def main():
     args = p.parse_args()
 
     os.makedirs(args.logdir, exist_ok=True)
-    env = make_env()
+    
+    # On passe l'argument reward à la création de l'environnement
+    env = make_env(mode=args.reward)
 
     checkpoint_cb = CheckpointCallback(
         save_freq=args.save_every,
