@@ -9,86 +9,22 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import CheckpointCallback
 from tetris_gymnasium.envs.tetris import Tetris
 
-# --- Fonctions utilitaires pour le calcul des récompenses ---
-# (Reprises de src/tetris_code/policies.py pour être autonomes dans l'entraînement)
-
-def heights(board):
-    """Calcule la 'hauteur' (profondeur du vide) de chaque colonne."""
-    heights_column = []
-    # Parcourir les colonnes du plateau
-    for i in range(board.shape[1]):
-        # Ignorer les colonnes de "rembourrage" (padding) qui ont un "1" en haut
-        if board[0, i] != 1:
-            # Commencer par le deuxième point le plus haut de la colonne courante
-            j = 2
-            # Descendre le long de la colonne jusqu'à rencontrer un pixel non "0"
-            while (j < board.shape[0]) and (board[j, i] == 0):
-                j = j + 1
-            # Stocker le résultat
-            heights_column.append(j)
-    return heights_column
-
-def holes(board):
-    """Calcule le nombre de trous sur le plateau."""
-    nb_holes = 0
-    # Parcourir les lignes et les colonnes du plateau
-    for i in range(board.shape[0]):
-        for j in range(board.shape[1]):
-            # Si un pixel est vide (0) mais qu'il y a un bloc au-dessus (!= 0), c'est un trou
-            if (i > 1) and (board[i, j] == 0) and (board[i-1, j] != 0):
-                nb_holes = nb_holes + 1
-    return nb_holes
-
-# --- Wrapper pour modifier la récompense ---
-
-class TetrisRewardWrapper(gym.Wrapper):
-    def __init__(self, env, reward_mode):
-        super().__init__(env)
-        self.reward_mode = reward_mode
-
-    def step(self, action):
-        # Exécuter l'action dans l'environnement original
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        
-        # Récupérer l'état du plateau
-        board = obs["board"]
-        
-        # Modifier la récompense selon le mode choisi
-        if self.reward_mode == "holes":
-            # Objectif : Minimiser les trous.
-            # On donne une pénalité proportionnelle au nombre de trous.
-            # L'agent cherchera à faire tendre cette valeur vers 0 (donc maximiser -N).
-            current_holes = holes(board)
-            reward = -float(current_holes)
-            
-        elif self.reward_mode == "height":
-            # Objectif : Minimiser la hauteur de la pile.
-            # La fonction 'heights' retourne l'index de la première brique rencontrée en partant du haut (la profondeur).
-            # Plus cet index est GRAND, plus la pile est BASSE.
-            # On veut donc maximiser min(heights).
-            h_list = heights(board)
-            if h_list:
-                # On utilise min() car c'est la colonne la plus haute (le plus petit index) qui définit la hauteur max du jeu.
-                min_depth = min(h_list)
-                reward = float(min_depth)
-            else:
-                reward = 0.0
-        
-        # Si le mode est "standard", on laisse la récompense telle quelle (score du jeu)
-        
-        return obs, reward, terminated, truncated, info
-
-# --- Configuration de l'environnement et du main ---
+from src.helper.wrapper import RewardWrapper
+from src.helper.reward_functions import added_reward, standard_reward
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def make_env(reward_mode="standard"):
+def make_env(mode="standard"):
     env = gym.make("tetris_gymnasium/Tetris")
     
-    # Appliquer le wrapper de récompense si un mode spécifique est demandé
-    if reward_mode in ["holes", "height"]:
-        env = TetrisRewardWrapper(env, reward_mode)
+    if mode == "standard":
+        reward_fn = standard_reward
+    elif mode == "added":
+        reward_fn = added_reward
+    else:
+        raise ValueError(f"Unknown reward mode: {mode}")
         
+    env = RewardWrapper(env, reward_fn)
     env = RecordEpisodeStatistics(env)
     env = FlattenObservation(env)
     env = Monitor(env)
@@ -106,6 +42,11 @@ def main():
     p.add_argument("--reward", type=str, default="standard", choices=["standard", "holes", "height"], 
                    help="Choose the reward function: 'standard' (game score), 'holes' (minimize holes), or 'height' (minimize stack height).")
 
+    
+    # Nouvel argument pour choisir le type de récompense
+    p.add_argument("--reward", type=str, default="added", choices=["standard", "added"], 
+                   help="Choose the reward function: 'standard' (game score), 'holes' (minimize holes), or 'height' (minimize stack height).")
+
     p.add_argument("--buffer_size", type=int, default=100_000)
     p.add_argument("--learning_starts", type=int, default=10_000)
     p.add_argument("--batch_size", type=int, default=64)
@@ -121,7 +62,7 @@ def main():
     os.makedirs(args.logdir, exist_ok=True)
     
     # On passe l'argument reward à la création de l'environnement
-    env = make_env(reward_mode=args.reward)
+    env = make_env(mode=args.reward)
 
     checkpoint_cb = CheckpointCallback(
         save_freq=args.save_every,

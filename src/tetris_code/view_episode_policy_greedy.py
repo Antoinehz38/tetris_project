@@ -7,7 +7,7 @@ if __name__ == "__main__":
     #create the environement
     env = gym.make("tetris_gymnasium/Tetris", render_mode="human", render_upscale=40)
     #initialize the environement including the RNG
-    env.reset()
+    print(env.reset())
     #keep track of episode end, total reward and time
     terminated = False
     total_reward = 0
