@@ -18,11 +18,11 @@ if __name__ == "__main__":
         #render the GUI
         env.render()
         #select action according to the given policy
-        action = policies.policy_greedy(env) 
+        action = policies.policy_no_holes(env) 
         #perform action, observe the reward and the next state
         observation, reward, terminated, truncated, info = env.step(action)
         #wait to be able to see the movement
-        key = cv2.waitKey(1) 
+        key = cv2.waitKey(10) 
         #add the reward to the sum of rewards so far 
         total_reward = reward + total_reward
         #display the current score in the terminal

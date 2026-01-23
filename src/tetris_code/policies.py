@@ -101,3 +101,50 @@ def policy_greedy(env):
     best_sequence = sequences_of_actions_to_try[imax] 
     #recomend the first action in the best sequence of actions  
     return best_sequence[0]
+
+
+def policy_no_holes(env):
+    """Greedy policy that strictly forbids creating new holes.
+    Falls back to minimizing holes if all placements create them.
+    """
+    sequences_of_actions_to_try = []
+    for k in range(10): 
+        sequences_of_actions_to_try.append([0 for _ in range(k-1)] + [5])
+        sequences_of_actions_to_try.append([1 for _ in range(k-1)] + [5])
+        sequences_of_actions_to_try.append([3] + [0 for _ in range(k-1)] + [5])
+        sequences_of_actions_to_try.append([3] + [1 for _ in range(k-1)] + [5])
+        sequences_of_actions_to_try.append([3,3] + [0 for _ in range(k-1)] + [5])
+        sequences_of_actions_to_try.append([3,3] + [1 for _ in range(k-1)] + [5])
+        sequences_of_actions_to_try.append([3,3,3] + [0 for _ in range(k-1)] + [5])
+        sequences_of_actions_to_try.append([3,3,3] + [1 for _ in range(k+1)] + [5])
+    
+    # Get current hole count
+    current_board = env.unwrapped.board  # may need adjustment based on env API
+    current_holes = holes(current_board)
+    
+    valid_sequences = []  # sequences that don't increase holes
+    all_results = []      # fallback: all (sequence, holes, height)
+    
+    for seq in sequences_of_actions_to_try:
+        new_env = copy.deepcopy(env)
+        for action in seq:
+            obs, reward, terminated, truncated, info = new_env.step(action)
+        
+        board = obs.get("board")
+        h = holes(board)
+        min_height = min(heights(board))
+        
+        all_results.append((seq, h, min_height))
+        
+        # Only accept if no new holes created
+        if h <= current_holes:
+            valid_sequences.append((seq, h, min_height))
+    
+    if valid_sequences:
+        # Among valid placements: minimize holes first, then maximize min_height
+        best = max(valid_sequences, key=lambda x: (-x[1], x[2]))
+    else:
+        # Fallback: pick least-bad option (minimize holes)
+        best = min(all_results, key=lambda x: (x[1], -x[2]))
+    
+    return best[0][0]
