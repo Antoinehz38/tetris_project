@@ -23,7 +23,7 @@ if __name__ == "__main__":
         while not terminated:
             t += 1
             #select action according to the improved greedy policy
-            action = policies_improved.policy_greedy_improved(env)
+            action = policies_improved.policy_lookahead(env)
             #perform action, observe the reward and the next state
             observation, reward, terminated, truncated, info = env.step(action)
             #add the reward to the sum of rewards so far
