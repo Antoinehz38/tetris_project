@@ -4,7 +4,7 @@ Script de test rapide pour vérifier que l'algorithme greedy amélioré fonction
 import gymnasium as gym
 import numpy as np
 from tetris_gymnasium.envs.tetris import Tetris
-from src.tetris_code.policies_improved import policy_greedy_improved
+from tetris_code.policies_improved import policy_greedy_improved
 
 print("="*60)
 print("Test de l'algorithme Greedy Amélioré")
