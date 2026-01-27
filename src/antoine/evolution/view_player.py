@@ -2,16 +2,14 @@ import cv2
 import gymnasium as gym
 import numpy as np
 from tetris_gymnasium.envs.tetris import Tetris  # force l'enregistrement
-from src.antoine.linear_approch import LinearAfterStateAgent
+from src.antoine.evolution.evolution_approch import EvolutionAgent  # <-- adapte le chemin
 
 
 def run_sequence(env, seq):
-    """Exécute une séquence jusqu'à fin/stop et renvoie (terminated, truncated, reward_sum)."""
     r_sum = 0.0
     terminated = False
     truncated = False
     info = {}
-
     for a in seq:
         obs, r, terminated, truncated, info = env.step(a)
         r_sum += float(r)
@@ -20,16 +18,27 @@ def run_sequence(env, seq):
     return terminated, truncated, r_sum, info
 
 
+
+
 if __name__ == "__main__":
-    # ENV
     env = gym.make("tetris_gymnasium/Tetris", render_mode="human", render_upscale=40)
+    
     obs, info = env.reset()
+    print("Attributs de env.unwrapped :")
+    print(dir(env.unwrapped))
 
-    # AGENT (ADAPTE n_features si tes features changent)
-    agent = LinearAfterStateAgent(n_features=9, alpha=0.001, gamma=0.99, epsilon=0.0, seed=42)
+    # Si tu vois 'game', 'engine' ou 'tetris', inspecte-les aussi :
+    if hasattr(env.unwrapped, 'game'):
+        print("\nAttributs de env.unwrapped.game :")
+        print(dir(env.unwrapped.game))
 
-    # Charge des poids si tu en as
-    agent.w = np.array([0, -2, -1, -0, -1, -0.5, -0.5, 0, -1], dtype=np.float32)
+    agent = EvolutionAgent(n_features=9, W0=None)
+
+    agent.w = np.load("weights_1.npy")
+    print("Loaded weights:", agent.w)
+
+    agent.w = np.array([0, -2, -1, 0, -1, -0.5, -0.5, -1, -1], dtype=np.float32)
+
 
     terminated = False
     truncated = False
@@ -40,10 +49,9 @@ if __name__ == "__main__":
         t += 1
         env.render()
 
-        # Choix d'une séquence (greedy car epsilon=0)
-        seq, x_after, r_sum_sim, done_sim = agent.choose_sequence(env)
+        # Greedy pur (pas sampling)
+        seq = agent.choose_sequence(env)
 
-        # Exécuter la séquence complète (comme ton policy_greedy)
         terminated, truncated, r_sum_real, info = run_sequence(env, seq)
 
         total_reward += r_sum_real

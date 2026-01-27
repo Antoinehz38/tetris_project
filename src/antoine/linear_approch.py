@@ -21,6 +21,17 @@ class LinearAfterStateAgent:
 
     def features(self, board) -> np.ndarray:
         return make_info_from_obs(board)
+    
+    def cost(self, x: np.ndarray) -> float:
+    # x = [bias, holes, agg_h, max_h, bump, rtrans, ctrans, wells, hdepth] (déjà normalisé)
+        return float(
+            2.0 * x[1] +                      # holes
+            1.0 * x[2] +                      # aggregate height
+            1.0 * x[4] +                      # bumpiness
+            0.5 * (x[5] + x[6]) +             # transitions
+            1.0 * x[8]                        # holes depth
+            # wells ignoré au début (x[7])
+        )
 
     def enumerate_candidate_sequences(self, env):
         """
@@ -77,8 +88,9 @@ class LinearAfterStateAgent:
 
         for seq in self.enumerate_candidate_sequences(env):
             x_after, r_sum, done = self.simulate_sequence(env, seq)
-            v = self.value(x_after)
-            score = r_sum if done else (r_sum + self.gamma * v)
+            #v = self.value(x_after)
+            #score = r_sum if done else (r_sum + self.gamma * v)
+            score = -self.cost(x_after)
 
             if score > best_score:
                 best_score = score
@@ -132,4 +144,3 @@ class LinearAfterStateAgent:
         delta = target - v_pred
         self.w += self.alpha * delta * x_after  # <- UPDATE DES POIDS
         return delta, target, v_pred
-
